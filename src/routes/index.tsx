@@ -69,10 +69,10 @@ function Index() {
           <h2 className="font-serif text-5xl lg:text-6xl leading-tight text-balance">
             A wardrobe poured, <em className="italic">not folded</em>.
           </h2>
-          <p className="mt-8 text-base leading-relaxed text-foreground/80 max-w-md">
+          <p className="mt-8 text-base leading-relaxed text-[#FF0000] max-w-md">
             SHAKEN was born on a sun-bleached Cape Town afternoon, somewhere between a bar cart and a sketchbook. Every piece is named after a cocktail we love, cut and stitched by hand in our small South African studio, and made to measure.
           </p>
-          <p className="mt-4 text-base leading-relaxed text-foreground/80 max-w-md">
+          <p className="mt-4 text-base leading-relaxed text-[#FF0000] max-w-md">
             We don't do mass. We do moments — the slow ones, the golden ones, the ones worth dressing for.
           </p>
           <Link to="/about" className="inline-block mt-10 text-xs uppercase tracking-luxe link-underline">

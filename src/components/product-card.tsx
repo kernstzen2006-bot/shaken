@@ -51,7 +51,7 @@ export function ProductCard({ product }: { product: Product }) {
           <Link to="/product/$slug" params={{ slug: product.slug }} className="font-serif text-xl leading-tight link-underline">
             {product.name}
           </Link>
-          <p className="text-[11px] uppercase tracking-luxe text-muted-foreground mt-1.5">
+          <p className="text-[11px] uppercase tracking-luxe text-[#FF0000] mt-1.5">
             {product.descriptor}
           </p>
         </div>
