@@ -68,6 +68,11 @@ function SignInPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full h-12 px-4 bg-transparent border border-cream/35 focus:border-coral outline-none"
             />
+            <div className="mt-2 flex justify-end">
+              <Link to="/reset-password" className="text-[11px] uppercase tracking-luxe link-underline text-cream/85 hover:text-cream">
+                Reset password
+              </Link>
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-300">{error}</p>}

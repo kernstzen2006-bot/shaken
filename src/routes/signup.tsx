@@ -7,12 +7,34 @@ export const Route = createFileRoute("/signup")({
   component: SignUpPage,
 });
 
+type FieldErrors = Partial<{
+  fullName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  dateOfBirth: string;
+  terms: string;
+}>;
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 function SignUpPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,19 +46,42 @@ function SignUpPage() {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
+    setSubmitError(null);
     setMessage(null);
+
+    const nextErrors: FieldErrors = {};
+    if (!fullName.trim()) nextErrors.fullName = "Please enter your full name.";
+    if (!email.trim()) nextErrors.email = "Please enter your email address.";
+    else if (!isValidEmail(email)) nextErrors.email = "Please enter a valid email address.";
+    if (!password) nextErrors.password = "Please enter a password.";
+    else if (password.length < 6) nextErrors.password = "Password must be at least 6 characters.";
+    if (!confirmPassword) nextErrors.confirmPassword = "Please confirm your password.";
+    else if (confirmPassword !== password) nextErrors.confirmPassword = "Passwords do not match.";
+    if (!dateOfBirth) nextErrors.dateOfBirth = "Please enter your date of birth.";
+    if (!agreeTerms) nextErrors.terms = "You must agree to the Terms & Conditions.";
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     setLoading(true);
 
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: fullName.trim(),
+          date_of_birth: dateOfBirth,
+          newsletter_opt_in: newsletterOptIn,
+          terms_accepted_at: new Date().toISOString(),
+        },
+      },
     });
 
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError.message);
+      setSubmitError(signUpError.message);
       return;
     }
 
@@ -53,28 +98,135 @@ function SignUpPage() {
 
         <form onSubmit={onSubmit} className="mt-8 space-y-5">
           <div>
+            <label className="block text-[11px] uppercase tracking-luxe mb-2">Full name</label>
+            <input
+              type="text"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => {
+                setFullName(e.target.value);
+                setErrors((prev) => ({ ...prev, fullName: undefined }));
+              }}
+              className="w-full h-12 px-4 bg-transparent border border-cream/35 focus:border-coral outline-none"
+            />
+            {errors.fullName && <p className="mt-2 text-xs text-red-300">{errors.fullName}</p>}
+          </div>
+
+          <div>
             <label className="block text-[11px] uppercase tracking-luxe mb-2">Email</label>
             <input
               type="email"
               required
+              autoComplete="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErrors((prev) => ({ ...prev, email: undefined }));
+              }}
               className="w-full h-12 px-4 bg-transparent border border-cream/35 focus:border-coral outline-none"
             />
-          </div>
-          <div>
-            <label className="block text-[11px] uppercase tracking-luxe mb-2">Password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-12 px-4 bg-transparent border border-cream/35 focus:border-coral outline-none"
-            />
+            {errors.email && <p className="mt-2 text-xs text-red-300">{errors.email}</p>}
           </div>
 
-          {error && <p className="text-sm text-red-300">{error}</p>}
+          <div>
+            <label className="block text-[11px] uppercase tracking-luxe mb-2">Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setErrors((prev) => ({ ...prev, password: undefined }));
+                }}
+                className="w-full h-12 px-4 pr-20 bg-transparent border border-cream/35 focus:border-coral outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] uppercase tracking-luxe text-cream/80 hover:text-cream"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+            {errors.password && <p className="mt-2 text-xs text-red-300">{errors.password}</p>}
+          </div>
+
+          <div>
+            <label className="block text-[11px] uppercase tracking-luxe mb-2">Confirm password</label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                required
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                }}
+                className="w-full h-12 px-4 pr-20 bg-transparent border border-cream/35 focus:border-coral outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] uppercase tracking-luxe text-cream/80 hover:text-cream"
+              >
+                {showConfirmPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+            {errors.confirmPassword && <p className="mt-2 text-xs text-red-300">{errors.confirmPassword}</p>}
+          </div>
+
+          <div>
+            <label className="block text-[11px] uppercase tracking-luxe mb-2">Date of birth</label>
+            <input
+              type="date"
+              required
+              value={dateOfBirth}
+              onChange={(e) => {
+                setDateOfBirth(e.target.value);
+                setErrors((prev) => ({ ...prev, dateOfBirth: undefined }));
+              }}
+              className="w-full h-12 px-4 bg-transparent border border-cream/35 focus:border-coral outline-none"
+            />
+            {errors.dateOfBirth && <p className="mt-2 text-xs text-red-300">{errors.dateOfBirth}</p>}
+          </div>
+
+          <div className="flex items-start gap-3">
+            <input
+              id="newsletter-opt-in"
+              type="checkbox"
+              checked={newsletterOptIn}
+              onChange={(e) => setNewsletterOptIn(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-coral"
+            />
+            <label htmlFor="newsletter-opt-in" className="text-sm text-cream/85">
+              I want to receive the newsletter.
+            </label>
+          </div>
+
+          <div>
+            <div className="flex items-start gap-3">
+              <input
+                id="agree-terms"
+                type="checkbox"
+                checked={agreeTerms}
+                onChange={(e) => {
+                  setAgreeTerms(e.target.checked);
+                  setErrors((prev) => ({ ...prev, terms: undefined }));
+                }}
+                className="mt-1 h-4 w-4 accent-coral"
+              />
+              <label htmlFor="agree-terms" className="text-sm text-cream/85">
+                I agree to the Terms &amp; Conditions
+              </label>
+            </div>
+            {errors.terms && <p className="mt-2 text-xs text-red-300">{errors.terms}</p>}
+          </div>
+
+          {submitError && <p className="text-sm text-red-300">{submitError}</p>}
           {message && <p className="text-sm text-green-300">{message}</p>}
 
           <button type="submit" className="btn-primary w-full" disabled={loading}>
