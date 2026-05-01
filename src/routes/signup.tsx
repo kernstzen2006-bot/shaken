@@ -36,7 +36,9 @@ function SignUpPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -48,6 +50,7 @@ function SignUpPage() {
     event.preventDefault();
     setSubmitError(null);
     setMessage(null);
+    setCanResend(false);
 
     const nextErrors: FieldErrors = {};
     if (!fullName.trim()) nextErrors.fullName = "Please enter your full name.";
@@ -95,10 +98,12 @@ function SignUpPage() {
     // `data.user` should still exist if the account was created successfully.
     if (!data.user) {
       setMessage("Sign up submitted. If you don’t receive an email, your Supabase email/SMTP settings may be blocking delivery.");
+      setCanResend(true);
       return;
     }
 
     setMessage("Account created. Check your email (and spam) to confirm your account, then sign in.");
+    setCanResend(true);
   }
 
   return (
@@ -240,6 +245,28 @@ function SignUpPage() {
 
           {submitError && <p className="text-sm text-red-300">{submitError}</p>}
           {message && <p className="text-sm text-green-300">{message}</p>}
+
+          {canResend && (
+            <button
+              type="button"
+              className="w-full border border-cream/35 h-12 text-[11px] uppercase tracking-luxe hover:border-coral transition-colors"
+              disabled={loading || resending}
+              onClick={async () => {
+                setSubmitError(null);
+                setMessage(null);
+                setResending(true);
+                const { error } = await supabase.auth.resend({ type: "signup", email: email.trim() });
+                setResending(false);
+                if (error) {
+                  setSubmitError(error.message);
+                  return;
+                }
+                setMessage("Confirmation email resent. Check your inbox (and spam).");
+              }}
+            >
+              {resending ? "Resending..." : "Resend confirmation email"}
+            </button>
+          )}
 
           <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? "Creating account..." : "Create Account"}
