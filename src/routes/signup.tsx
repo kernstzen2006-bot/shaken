@@ -65,10 +65,16 @@ function SignUpPage() {
 
     setLoading(true);
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const emailRedirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/signin`
+        : undefined;
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo,
         data: {
           full_name: fullName.trim(),
           date_of_birth: dateOfBirth,
@@ -85,8 +91,14 @@ function SignUpPage() {
       return;
     }
 
-    setMessage("Account created. Check your email to confirm your account, then sign in.");
-    void navigate({ to: "/signin" });
+    // With email confirmation enabled, Supabase returns no session until confirmed.
+    // `data.user` should still exist if the account was created successfully.
+    if (!data.user) {
+      setMessage("Sign up submitted. If you don’t receive an email, your Supabase email/SMTP settings may be blocking delivery.");
+      return;
+    }
+
+    setMessage("Account created. Check your email (and spam) to confirm your account, then sign in.");
   }
 
   return (
