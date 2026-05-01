@@ -31,7 +31,12 @@ function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim());
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/update-password`
+        : undefined;
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
     setLoading(false);
 
     if (resetError) {
