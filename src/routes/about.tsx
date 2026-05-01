@@ -30,7 +30,7 @@ function About() {
           <img src={founder} alt="SHAKEN founder in studio" className="w-full h-full object-contain bg-olive/20" loading="lazy" />
         </div>
         <div className="space-y-6 text-base leading-relaxed text-cream/80 max-w-md">
-          <p>SHAKEN began the way most beautiful things do — accidentally, and over a drink. It was 2023, somewhere on the Atlantic Seaboard, and our founder Lerato was sketching a swimsuit on the back of a cocktail menu.</p>
+          <p>SHAKEN began the way most beautiful things do — accidentally, and over a drink. It was 2023, somewhere on the Atlantic Seaboard, and our founder Morgan was sketching a swimsuit on the back of a cocktail menu.</p>
           <p>By the time the bill arrived, the first piece — The Espresso Martini — already had its name. The second came a week later. Within a season, an entire collection had been poured.</p>
           <p>Today every SHAKEN bikini is still designed, cut and stitched by hand in our small Cape Town studio. Made to order, made to last, made for the women who measure their summers in cocktails.</p>
         </div>
@@ -42,7 +42,7 @@ function About() {
           <p className="font-serif italic text-[clamp(2.25rem,5vw,4rem)] leading-tight text-balance">
             "Every bikini is a sip of <span className="not-italic font-serif">something beautiful</span>."
           </p>
-          <p className="mt-8 text-[11px] uppercase tracking-luxe text-cream/80">Lerato — Founder</p>
+          <p className="mt-8 text-[11px] uppercase tracking-luxe text-cream/80">Morgan — Founder</p>
         </div>
       </section>
 
