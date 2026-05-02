@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/update-password")({
@@ -10,6 +10,60 @@ type FieldErrors = Partial<{
   password: string;
   confirmPassword: string;
 }>;
+
+function stripRecoveryParamsFromUrl() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.hash = "";
+  url.searchParams.delete("code");
+  url.searchParams.delete("token_hash");
+  url.searchParams.delete("type");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+}
+
+async function establishRecoverySession(): Promise<{ error?: string }> {
+  if (typeof window === "undefined") return {};
+
+  const url = new URL(window.location.href);
+
+  // Implicit-style recovery link: #access_token=...&refresh_token=...
+  const rawHash = window.location.hash.replace(/^#/, "");
+  if (rawHash) {
+    const hashParams = new URLSearchParams(rawHash);
+    const access_token = hashParams.get("access_token");
+    const refresh_token = hashParams.get("refresh_token");
+    if (access_token && refresh_token) {
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (error) return { error: error.message };
+      stripRecoveryParamsFromUrl();
+      return {};
+    }
+  }
+
+  // PKCE-style recovery link: ?code=...
+  const code = url.searchParams.get("code");
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) return { error: error.message };
+    stripRecoveryParamsFromUrl();
+    return {};
+  }
+
+  // Alternative recovery link shape
+  const token_hash = url.searchParams.get("token_hash");
+  const type = url.searchParams.get("type");
+  if (token_hash && type === "recovery") {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash,
+      type: "recovery",
+    });
+    if (error) return { error: error.message };
+    stripRecoveryParamsFromUrl();
+    return {};
+  }
+
+  return {};
+}
 
 function UpdatePasswordPage() {
   const navigate = useNavigate();
@@ -23,27 +77,14 @@ function UpdatePasswordPage() {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
-  const hasCode = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return new URL(window.location.href).searchParams.has("code");
-  }, []);
-
   useEffect(() => {
     let active = true;
 
     async function init() {
       try {
-        // Some Supabase setups use ?code=... (PKCE). Exchange it for a session.
-        if (typeof window !== "undefined" && hasCode) {
-          const url = new URL(window.location.href);
-          const code = url.searchParams.get("code");
-          if (code) {
-            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-            if (exchangeError) {
-              setError(exchangeError.message);
-            }
-          }
-        }
+        const { error: sessionError } = await establishRecoverySession();
+        if (!active) return;
+        if (sessionError) setError(sessionError);
       } finally {
         if (active) setReady(true);
       }
@@ -53,7 +94,7 @@ function UpdatePasswordPage() {
     return () => {
       active = false;
     };
-  }, [hasCode]);
+  }, []);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,16 +111,29 @@ function UpdatePasswordPage() {
     if (Object.keys(nextErrors).length > 0) return;
 
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    setLoading(false);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        setError(
+          "Your reset link is invalid or expired. Request a new reset email and open the link again.",
+        );
+        return;
+      }
 
-    if (updateError) {
-      setError(updateError.message);
-      return;
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+
+      setMessage("Password updated. You can now sign in.");
+      await supabase.auth.signOut();
+      void navigate({ to: "/signin" });
+    } finally {
+      setLoading(false);
     }
-
-    setMessage("Password updated. You can now sign in.");
-    void navigate({ to: "/signin" });
   }
 
   return (
@@ -141,7 +195,9 @@ function UpdatePasswordPage() {
                   {showConfirmPassword ? "Hide" : "Show"}
                 </button>
               </div>
-              {errors.confirmPassword && <p className="mt-2 text-xs text-red-300">{errors.confirmPassword}</p>}
+              {errors.confirmPassword && (
+                <p className="mt-2 text-xs text-red-300">{errors.confirmPassword}</p>
+              )}
             </div>
 
             {error && <p className="text-sm text-red-300">{error}</p>}
@@ -155,9 +211,12 @@ function UpdatePasswordPage() {
 
         <p className="mt-6 text-sm text-cream/80">
           Back to <Link to="/signin" className="link-underline text-coral">sign in</Link>
+          {" · "}
+          <Link to="/reset-password" className="link-underline text-coral">
+            Request new link
+          </Link>
         </p>
       </div>
     </div>
   );
 }
-
