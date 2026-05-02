@@ -1,9 +1,10 @@
 import { X, Minus, Plus } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useCart } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/products";
 
 export function CartDrawer() {
+  const navigate = useNavigate();
   const { isOpen, close, items, updateQty, remove, subtotal } = useCart();
   return (
     <div className={`fixed inset-0 z-50 ${isOpen ? "visible" : "invisible"}`}>
@@ -61,7 +62,16 @@ export function CartDrawer() {
                 <span>{formatPrice(subtotal)}</span>
               </div>
               <p className="text-[11px] text-muted-foreground">Shipping & taxes calculated at checkout.</p>
-              <button className="btn-primary w-full">Checkout</button>
+              <button
+                type="button"
+                className="btn-primary w-full"
+                onClick={() => {
+                  close();
+                  void navigate({ to: "/checkout" });
+                }}
+              >
+                Checkout
+              </button>
             </div>
           </>
         )}
