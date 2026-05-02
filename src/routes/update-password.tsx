@@ -26,7 +26,20 @@ async function establishRecoverySession(): Promise<{ error?: string }> {
 
   const url = new URL(window.location.href);
 
-  // Implicit-style recovery link: #access_token=...&refresh_token=...
+  // 1) token_hash recovery link — works even when email opens on another browser/device (recommended).
+  const token_hash = url.searchParams.get("token_hash");
+  const type = url.searchParams.get("type");
+  if (token_hash && type === "recovery") {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash,
+      type: "recovery",
+    });
+    if (error) return { error: error.message };
+    stripRecoveryParamsFromUrl();
+    return {};
+  }
+
+  // 2) Implicit-style recovery link: #access_token=...&refresh_token=...
   const rawHash = window.location.hash.replace(/^#/, "");
   if (rawHash) {
     const hashParams = new URLSearchParams(rawHash);
@@ -40,24 +53,20 @@ async function establishRecoverySession(): Promise<{ error?: string }> {
     }
   }
 
-  // PKCE-style recovery link: ?code=...
+  // 3) PKCE-style recovery link: ?code=... — only works in the SAME browser that requested the reset.
   const code = url.searchParams.get("code");
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) return { error: error.message };
-    stripRecoveryParamsFromUrl();
-    return {};
-  }
-
-  // Alternative recovery link shape
-  const token_hash = url.searchParams.get("token_hash");
-  const type = url.searchParams.get("type");
-  if (token_hash && type === "recovery") {
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash,
-      type: "recovery",
-    });
-    if (error) return { error: error.message };
+    if (error) {
+      const msg = error.message ?? "";
+      if (msg.includes("code verifier") || msg.includes("PKCE")) {
+        return {
+          error:
+            "This reset link was opened in a different browser than where you requested it. Request a new reset email and open it in this browser, or change your Supabase reset template so the button links to {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery (instead of {{ .ConfirmationURL }}).",
+        };
+      }
+      return { error: msg };
+    }
     stripRecoveryParamsFromUrl();
     return {};
   }
